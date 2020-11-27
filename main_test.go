@@ -35,14 +35,17 @@ func TestOverload(t *testing.T) {
 }
 
 //* Test Wrappers
-func wrapperFunc(args ...interface{}) (interface{}, error) {
-	defs := OverloadList{
-		OverloadIndex{
-			[]interface{}{1, 1},
-			intCallback,
+func wrapperFunc(args ...interface{}) (int, error) {
+	defs := OverloadOptions{
+		OverloadCallback{
+			argTypes:   []string{"int", "int"},
+			returnType: "int",
+			callback:   intCallback,
 		},
 	}
-	return Overload(defs, args)
+
+	res, err := Overload(defs, args)
+	return ToInt(res.value), err
 }
 
 func panicWrapper() (interface{}, error) {
@@ -50,11 +53,11 @@ func panicWrapper() (interface{}, error) {
 }
 
 func emptyDefWrapper() (interface{}, error) {
-	defs := OverloadList{}
+	defs := OverloadOptions{}
 	return Overload(nil, defs)
 }
 
 //* Callbacks
 func intCallback(args OverloadArgs) interface{} {
-	return args[0].(int) + args[1].(int)
+	return ToInt(args[0]) + ToInt(args[1])
 }

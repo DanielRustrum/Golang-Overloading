@@ -3,22 +3,30 @@ package main
 import (
 	"errors"
 	"reflect"
+	"strings"
 )
 
-// OverloadList is ...
-type OverloadList []OverloadIndex
+// OverloadOptions is ...
+type OverloadOptions []OverloadCallback
 
-// OverloadIndex is ...
-type OverloadIndex struct {
-	types    []interface{}
-	callback func(OverloadArgs) interface{}
+// OverloadCallback is ...
+type OverloadCallback struct {
+	argTypes   []string
+	returnType string
+	callback   func(OverloadArgs) interface{}
 }
 
 // OverloadArgs is ...
 type OverloadArgs []interface{}
 
+// OverloadResponse is ...
+type OverloadResponse struct {
+	value        interface{}
+	responseType string
+}
+
 // Overload is ...
-func Overload(overloadList OverloadList, args ...interface{}) (results interface{}, err error) {
+func Overload(overloadList OverloadOptions, args ...interface{}) (results OverloadResponse, err error) {
 	//* Panic if overload not specified
 	if overloadList == nil || len(overloadList) == 0 {
 		panic("Overload Error: No Overloads Specified")
@@ -29,14 +37,14 @@ func Overload(overloadList OverloadList, args ...interface{}) (results interface
 	for _, indexValue := range overloadList {
 
 		//* Error If types are greater than args
-		if len(args)+1 < len(indexValue.types) {
-			return nil, errors.New("Overload Error: Length of types is greater than args")
+		if len(args)+1 < len(indexValue.argTypes) {
+			return OverloadResponse{}, errors.New("Overload Error: Length of types is greater than args")
 		}
 
 		//* Find Overload
 		overloadFound = true
-		for index, indexType := range indexValue.types {
-			if reflect.TypeOf(args[index]) != reflect.TypeOf(indexType) {
+		for index, indexType := range indexValue.argTypes {
+			if getType(args[index]) != strings.ToLower(indexType) {
 				overloadFound = false
 				break
 			}
@@ -44,12 +52,27 @@ func Overload(overloadList OverloadList, args ...interface{}) (results interface
 
 		//* Run Callback once found
 		if overloadFound {
-			return indexValue.callback(args), nil
+			return OverloadResponse{
+				value:        indexValue.callback(args),
+				responseType: indexValue.returnType,
+			}, nil
 		}
 	}
 
 	//* Return Overload not found error
-	return nil, errors.New("Overload Error: Overload not found for args")
+	return OverloadResponse{}, errors.New("Overload Error: Overload not found for args")
+}
+
+func getType(arg interface{}) (res string) {
+	argType := reflect.TypeOf(arg)
+
+	for argType.Kind() == reflect.Ptr {
+		argType = argType.Elem()
+		res += "*"
+	}
+
+	return res + argType.Name()
+
 }
 
 //* Main for linter purpose
